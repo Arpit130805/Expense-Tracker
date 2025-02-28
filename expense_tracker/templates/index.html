@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+        </div>
+        <div class="app-details">
+            <h1>Expense Tracker</h1>
+            <p>Manage your expenses, family members, and investments efficiently</p>
+        </div>
+    </header>
+    <div class="main-container">
+        <nav class="sidebar">
+            <ul>
+                <li><a href="#" onclick="showSection('home')">Home</a></li>
+                <li><a href="#" onclick="showSection('expenses')">Expenses</a></li>
+                <li><a href="#" onclick="showSection('investments')">Investments</a></li>
+                <li><a href="#" onclick="showSection('family')">Family</a></li>
+                <li><a href="#" onclick="showSection('graphs')">Graphs</a></li>
+                <li><a href="#" onclick="showSection('settings')">Settings</a></li>
+                <li><a href="#" onclick="showSection('support')">Support</a></li>
+                <li><a href="#" onclick="showSection('budget')">Budget</a></li>
+                <li><a href="#" onclick="showSection('education')">Education</a></li>
+                <li><a href="#" onclick="showSection('alerts')">Alerts</a></li>
+                <li><a href="#" onclick="showSection('loans')">Loans</a></li>
+                <li><a href="#" onclick="showSection('savings')">Savings</a></li>
+            </ul>
+        </nav>
+        <div class="content">
+            <h2>Expense Tracker Dashboard</h2>
+
+            <div class="dashboard">
+                <!-- Home Block -->
+                <div class="block" id="home" style="display: none;">
+                    <h3>User Profile</h3>
+                    <div class="profile">
+                        <img src="{{ url_for('static', filename='profile.png') }}" alt="User Profile Picture" class="profile-picture">
+                        <div class="profile-details">
+                            <p><strong>Name:</strong> {{ user.name }}</p>
+                            <p><strong>Email:</strong> {{ user.email }}</p>
+                            <p><strong>Joined:</strong> {{ user.joined_date }}</p>
+                            <p><strong>Total Earnings:</strong> ₹{{ user.total_earnings }}</p>
+                            <p><strong>Total Expenses:</strong> ₹{{ user.total_expenses }}</p>
+                            <p><strong>Total Savings:</strong> ₹{{ user.total_savings }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses Block -->
+                <div class="block" id="expenses" style="display: none;">
+                    <h3>Expenses</h3>
+                    <form action="/add" method="POST" class="form">
+                        <input type="number" name="amount" placeholder="Amount" step="0.01" required>
+                        <select name="expense_type" required>
+                            <option value="" disabled selected>Select Expense Type</option>
+                            <option value="Food">Food</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <!-- Add more expense types as needed -->
+                        </select>
+                        <select name="family_member_id" required>
+                            <option value="" disabled selected>Select Family Member</option>
+                            {% for member in family_members %}
+                            <option value="{{ member.id }}">{{ member.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit">Add Expense</button>
+                    </form>
+                    <ul class="list">
+                        {% for expense in expenses %}
+                        <li>
+                            ₹{{ expense.amount }} ({{ expense.family_member.name }}) - {{ expense.type }}
+                            <a href="/delete/{{ expense.id }}">❌</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- Family Block -->
+                <div class="block" id="family" style="display: none;">
+                    <h3>Family Members</h3>
+                    <form action="/add_family_member" method="POST" class="form">
+                        <input type="text" name="name" placeholder="Family Member Name" required>
+                        <input type="number" name="earnings" placeholder="Earnings" step="0.01" required>
+                        <button type="submit">Add Family Member</button>
+                    </form>
+                    <ul class="list">
+                        {% for member in family_members %}
+                        <li>
+                            {{ member.name }} - Earnings: ₹{{ member.earnings }} - Savings: ₹{{ savings_data[loop.index0] }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- Investments Block -->
+                <div class="block" id="investments" style="display: none;">
+                    <h3>Investments</h3>
+                    <form action="/add_investment" method="POST" class="form">
+                        <input type="text" name="name" placeholder="Investment Name" required>
+                        <input type="number" name="amount" placeholder="Amount" step="0.01" required>
+                        <select name="investment_type" required>
+                            <option value="" disabled selected>Select Investment Type</option>
+                            <option value="Stocks">Stocks</option>
+                            <option value="Bonds">Bonds</option>
+                            <option value="Real Estate">Real Estate</option>
+                            <option value="Mutual Funds">Mutual Funds</option>
+                            <!-- Add more investment types as needed -->
+                        </select>
+                        <select name="family_member_id" required>
+                            <option value="" disabled selected>Select Family Member</option>
+                            {% for member in family_members %}
+                            <option value="{{ member.id }}">{{ member.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit">Add Investment</button>
+                    </form>
+                    <ul class="list">
+                        {% for investment in investments %}
+                        <li>
+                            {{ investment.name }} - ₹{{ investment.amount }} ({{ investment.family_member.name }}) - {{ investment.type }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- Graphs Block -->
+                <div class="block" id="graphs" style="display: none;">
+                    <h3>Expense Graph</h3>
+                    <canvas id="expenseChart"></canvas>
+                    <script type="application/json" id="expenseLabels">
+                        {{ expenses|map(attribute='type')|list|tojson }}
+                    </script>
+                    <script type="application/json" id="expenseData">
+                        {{ expenses|map(attribute='amount')|list|tojson }}
+                    </script>
+
+                    <h3>Savings Graph</h3>
+                    <canvas id="savingsChart"></canvas>
+                    <script type="application/json" id="savingsLabels">
+                        {{ family_members|map(attribute='name')|list|tojson }}
+                    </script>
+                    <script type="application/json" id="savingsData">
+                        {{ savings_data|tojson }}
+                    </script>
+                </div>
+
+                <!-- Settings Block -->
+                <div class="block" id="settings" style="display: none;">
+                    <h3>Settings</h3>
+                    <p>Settings content goes here...</p>
+                </div>
+
+                <!-- Support Block -->
+                <div class="block" id="support" style="display: none;">
+                    <h3>Support</h3>
+                    <p>Support content goes here...</p>
+                </div>
+
+                <!-- Budget Block -->
+                <div class="block" id="budget" style="display: none;">
+                    <h3>Budget</h3>
+                    <form action="/add_budget" method="POST" class="form">
+                        <input type="number" name="amount" placeholder="Budget Amount" step="0.01" required>
+                        <select name="category" required>
+                            <option value="" disabled selected>Select Category</option>
+                            <option value="Food">Food</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <!-- Add more categories as needed -->
+                        </select>
+                        <button type="submit">Add Budget</button>
+                    </form>
+                    <ul class="list">
+                        {% for budget in budgets %}
+                        <li>
+                            ₹{{ budget.amount }} - {{ budget.category }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- Education Block -->
+                <div class="block" id="education" style="display: none;">
+                    <h3>Financial Education Hub</h3>
+                    <ul class="list">
+                        {% for article in articles %}
+                        <li>
+                            <a href="/article/{{ article.id }}">{{ article.title }}</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- Alerts Block -->
+                <div class="block" id="alerts" style="display: none;">
+                    <h3>AI-Powered Alerts & Tips</h3>
+                    <ul class="list">
+                        {% for alert in alerts %}
+                        <li>
+                            {{ alert.message }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- Loans Block -->
+                <div class="block" id="loans" style="display: none;">
+                    <h3>Loans & Debt Management</h3>
+                    <form action="/add_loan" method="POST" class="form">
+                        <input type="text" name="provider" placeholder="Loan Provider" required>
+                        <input type="number" name="amount" placeholder="Loan Amount" step="0.01" required>
+                        <input type="number" name="interest_rate" placeholder="Interest Rate (APR)" step="0.01" required>
+                        <input type="number" name="tenure" placeholder="Loan Tenure (months)" required>
+                        <input type="number" name="emi" placeholder="EMI Amount" step="0.01" required>
+                        <input type="date" name="due_date" required>
+                        <button type="submit">Add Loan</button>
+                    </form>
+                    <ul class="list">
+                        {% for loan in loans %}
+                        <li>
+                            {{ loan.provider }} - ₹{{ loan.amount }} - EMI: ₹{{ loan.emi }} - Due Date: {{ loan.due_date.strftime('%Y-%m-%d') }}
+                            <br>Remaining Balance: ₹{{ loan.remaining_balance }}
+                            <br>Payment Progress: {{ loan.payment_progress }}%
+                            <a href="/repayment_schedule/{{ loan.id }}">View Repayment Schedule</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+
+                    <h3>EMI Calculator</h3>
+                    <form action="/calculate_emi" method="GET" class="form">
+                        <input type="number" name="amount" placeholder="Loan Amount" step="0.01" required>
+                        <input type="number" name="interest_rate" placeholder="Interest Rate (APR)" step="0.01" required>
+                        <input type="number" name="tenure" placeholder="Loan Tenure (months)" required>
+                        <button type="submit">Calculate EMI</button>
+                    </form>
+                    <div class="emi-calculator-results">
+                        {% if emi_results %}
+                        <p>EMI: ₹{{ emi_results.emi }}</p>
+                        <p>Interest Component: ₹{{ emi_results.interest }}</p>
+                        <p>Principal Component: ₹{{ emi_results.principal }}</p>
+                        {% endif %}
+                    </div>
+
+                    <h3>Repayment Schedule</h3>
+                    <div class="repayment-schedule">
+                        {% if repayment_schedule %}
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>EMI</th>
+                                    <th>Principal</th>
+                                    <th>Interest</th>
+                                    <th>Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in repayment_schedule %}
+                                <tr>
+                                    <td>{{ payment.month }}</td>
+                                    <td>₹{{ payment.emi }}</td>
+                                    <td>₹{{ payment.principal }}</td>
+                                    <td>₹{{ payment.interest }}</td>
+                                    <td>₹{{ payment.balance }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <a href="/download_repayment_schedule/{{ loan.id }}">Download Schedule</a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Savings Block -->
+                <div class="block" id="savings" style="display: none;">
+                    <h3>Savings Planner</h3>
+                    <form action="/add_savings_goal" method="POST" class="form">
+                        <input type="text" name="goal_name" placeholder="Savings Goal Name" required>
+                        <input type="number" name="target_amount" placeholder="Target Amount" step="0.01" required>
+                        <button type="submit">Add Savings Goal</button>
+                    </form>
+                    <ul class="list">
+                        {% for goal in savings_goals %}
+                        <li>
+                            {{ goal.name }} - ₹{{ goal.saved_amount }} / ₹{{ goal.target_amount }}
+                            <div class="progress-bar">
+                                <div class="progress-bar-inner" style="width: {% if goal.target_amount > 0 %}{{ (goal.saved_amount / goal.target_amount) * 100 }}{% else %}0{% endif %}%;"></div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <h3>Automated Savings Suggestions</h3>
+                    <form action="/update_savings_suggestions" method="POST" class="form">
+                        <label for="income">Monthly Income:</label>
+                        <input type="number" name="income" id="income" placeholder="Monthly Income" step="0.01" required>
+                        <label for="expenses">Monthly Expenses:</label>
+                        <input type="number" name="expenses" id="expenses" placeholder="Monthly Expenses" step="0.01" required>
+                        <label for="timeline">Savings Timeline (months):</label>
+                        <input type="number" name="timeline" id="timeline" placeholder="Savings Timeline" step="1" required>
+                        <button type="submit">Get Suggestions</button>
+                    </form>
+                    <ul class="list">
+                        {% for suggestion in savings_suggestions %}
+                        <li>
+                            {{ suggestion.goal_name }}: Save ₹{{ suggestion.monthly_saving }} per month
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <h3>Breakdown of Savings</h3>
+                    <ul class="list">
+                        {% for category, amount in savings_breakdown.items() %}
+                        <li>
+                            {{ category }}: ₹{{ amount }}
+                            <div class="progress-bar">
+                                <div class="progress-bar-inner" style="width: {% if total_savings > 0 %}{{ (amount / total_savings) * 100 }}{% else %}0{% endif %}%;"></div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <h3>Savings Calculator</h3>
+                    <form action="/calculate_savings" method="POST" class="form">
+                        <label for="goal_amount">Goal Amount:</label>
+                        <input type="number" name="goal_amount" id="goal_amount" placeholder="Goal Amount" step="0.01" required>
+                        <label for="timeframe">Timeframe (months):</label>
+                        <input type="number" name="timeframe" id="timeframe" placeholder="Timeframe" step="1" required>
+                        <button type="submit">Calculate</button>
+                    </form>
+                    <div class="savings-calculator-results">
+                        {% if savings_calculator_results %}
+                        <p>To achieve your goal of ₹{{ savings_calculator_results.goal_amount }} in {{ savings_calculator_results.timeframe }} months, you need to save ₹{{ savings_calculator_results.monthly_saving }} per month.</p>
+                        <p>Expected interest growth if invested: ₹{{ savings_calculator_results.expected_interest }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showSection(sectionId) {
+            const sections = document.querySelectorAll('.block');
+            sections.forEach(section => {
+                section.style.display = 'none';
+            });
+            document.getElementById(sectionId).style.display = 'block';
+        }
+
+        // Show the home section by default
+        showSection('home');
+
+        // Expense Pie Chart
+        const expenseCtx = document.getElementById('expenseChart').getContext('2d');
+        const expenseChart = new Chart(expenseCtx, {
+            type: 'pie',
+            data: {
+                labels: JSON.parse(document.getElementById('expenseLabels').textContent),
+                datasets: [{
+                    label: 'Expenses',
+                    data: JSON.parse(document.getElementById('expenseData').textContent),
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR' }).format(context.parsed);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Savings Area Chart
+        const savingsCtx = document.getElementById('savingsChart').getContext('2d');
+        const savingsChart = new Chart(savingsCtx, {
+            type: 'line',
+            data: {
+                labels: JSON.parse(document.getElementById('savingsLabels').textContent),
+                datasets: [{
+                    label: 'Savings',
+                    data: JSON.parse(document.getElementById('savingsData').textContent),
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR' }).format(context.parsed);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Savings Breakdown Chart
+        const savingsBreakdownCtx = document.getElementById('savingsBreakdownChart').getContext('2d');
+        const savingsBreakdownChart = new Chart(savingsBreakdownCtx, {
+            type: 'doughnut',
+            data: {
+                labels: JSON.parse(document.getElementById('savingsBreakdownLabels').textContent),
+                datasets: [{
+                    label: 'Savings Breakdown',
+                    data: JSON.parse(document.getElementById('savingsBreakdownData').textContent),
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR' }).format(context.parsed);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
